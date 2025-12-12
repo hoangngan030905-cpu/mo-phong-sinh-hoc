@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mô Phỏng Điều Hòa Tuần Hoàn Máu (Huyết áp giảm)</title>
+    
+    <style>
+        body { 
+            margin: 0; 
+            background-color: #f0f0f0; 
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 20px;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            display: block;
+            margin-top: 10px;
+        }
+        .controls { 
+            /* Đặt nút điều khiển ở trên cùng */
+            z-index: 10; 
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .controls button {
+            padding: 10px 15px;
+            margin: 5px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        #startBtn {
+            background-color: #4CAF50;
+            color: white;
+        }
+        #resetBtn {
+            background-color: #f44336;
+            color: white;
+        }
+        #statusText {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+    </style>
+    
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.9.3/lib/p5.js"></script>
+    
+</head>
+<body>
+    <div class="controls">
+        <h2>Điều Hòa Tuần Hoàn Máu (Khi HP giảm)</h2>
+        <button id="startBtn" onclick="startSimulation()">1. Bắt đầu HP Giảm</button>
+        <button id="resetBtn" onclick="resetSimulation()">2. Thiết lập lại</button>
+        <div id="statusText">Trạng thái: Đang chờ khởi động (HP Bình thường)</div>
+    </div>
+    
+    <script>
+        // --- CÁC BIẾN TOÀN CỤC ---
+        let simulationState = 0; // 0: Cân bằng, 1: HP Giảm, 2: HP Tăng trở lại, 3: Hoàn tất
+        let heartRate = 80;
+        let bloodPressure = 120; // Đồng hồ HP
+        let maxHP = 120;
+        let minHP = 90;
+        let hpChangeRate = 0.2;
+        let neuronSignalSpeed = 5;
+        let hormoneProgress = 0;
+        let timeElapsed = 0;
+
+        // --- HÀM CƠ BẢN CỦA P5.JS ---
+
+        function setup() {
+            // Kích thước canvas
+            const canvas = createCanvas(800, 600); 
+            // Đảm bảo canvas được đặt trong body
+            canvas.parent(document.body);
+            resetSimulation();
+        }
+
+        function draw() {
+            background(255);
+            timeElapsed++;
+
+            // 1. Vẽ các thành phần cơ thể cố định (Tim, Mạch, Hành não, Tuyến thận)
+            drawAnatomy(); 
+            
+            // 2. Vẽ Đồng hồ Huyết áp (HP)
+            drawBloodPressureGauge(bloodPressure);
+            
+            // 3. Xử lý logic và hiệu ứng động theo trạng thái
+            if (simulationState === 1) {
+                handlePhase1_Hypotension();
+            } else if (simulationState === 2) {
+                handlePhase2_Regulation();
+            } else if (simulationState === 3) {
+                // Trạng thái Hoàn tất, chỉ giữ nguyên hiển thị
+            }
+        }
+
+        // --- HÀM XỬ LÝ LOGIC ---
+
+        function handlePhase1_Hypotension() {
+            // Giai đoạn 1: Giảm HP & Cảm nhận (Thần kinh ly tâm)
+            if (bloodPressure > minHP) {
+                bloodPressure -= hpChangeRate; 
+                document.getElementById('statusText').innerText = `Trạng thái: 1. Huyết áp đang giảm (${bloodPressure.toFixed(1)} mmHg). Thụ thể áp lực bị kích thích.`;
+                drawReceptorFlash(color(255, 0, 0));
+                
+                // Sau khi HP giảm đáng kể, kích hoạt tín hiệu thần kinh
+                if (bloodPressure <= 110) {
+                     drawNeuralSignal(1, 1); // Tín hiệu từ thụ thể về Hành não (Tâm)
+                }
+
+            } else {
+                // HP đã đạt mức thấp, chuyển sang Giai đoạn 2
+                simulationState = 2;
+                timeElapsed = 0; // Reset thời gian cho giai đoạn tiếp theo
+            }
+        }
+
+        function handlePhase2_Regulation() {
+            // Giai đoạn 2: Kích hoạt Thần kinh Giao cảm & Thể dịch
+            
+            // A. Điều hòa Thần kinh (Tác động nhanh)
+            drawNeuralSignal(2, 2); // Tín hiệu từ Hành não đến Tim/Mạch/Tuyến thận (Ly tâm)
+            animateHeart(heartRate + 20 + sin(frameCount * 0.1) * 5); // Tim đập nhanh, mạnh
+            animateVesselConstriction(1); // Mạch co lại (tác động thần kinh)
+            
+            let status = "Trạng thái: 2. Trung khu hành não tăng xung giao cảm. ";
+            
+            // B. Điều hòa Thể dịch (Sau 1 khoảng thời gian)
+            if (timeElapsed > 150) { // Ví dụ: 2.5 giây sau khi xung thần kinh xuất hiện
+                drawHormoneRelease(); // Hormone Adrenalin/Noradrenalin
+                animateVesselConstriction(2); // Mạch co lại (củng cố bởi hormone)
+                status += "Tuyến trên thận tiết Adrenalin/Noradrenalin. ";
+                
+                // C. HP tăng trở lại
+                if (bloodPressure < maxHP) {
+                    bloodPressure += hpChangeRate * 1.5; // Tăng nhanh hơn tốc độ giảm
+                    status += `HP tăng trở lại (${bloodPressure.toFixed(1)} mmHg).`;
+                } else {
+                    bloodPressure = maxHP;
+                    simulationState = 3; // Hoàn tất
+                    status = "Trạng thái: 3. Đã hoàn tất điều hòa. Huyết áp trở lại bình thường.";
+                }
+            } else {
+                 status += "Tim đập nhanh, mạnh và Mạch máu co lại.";
+            }
+
+            document.getElementById('statusText').innerText = status;
+        }
+
+
+        // --- HÀM VẼ ĐỒ HỌA (Mô phỏng Đồ họa cơ bản) ---
+
+        function drawAnatomy() { 
+            // Vị trí các bộ phận chính (Tọa độ giả định)
+            const AN = { hn: {x: 650, y: 100}, heart: {x: 400, y: 350}, sn: {x: 600, y: 500}, vessel: {x: 400, y: 250} };
+            
+            // 1. Hành não (Trung khu ĐHTM)
+            fill(150, 50, 50); ellipse(AN.hn.x, AN.hn.y, 80, 50); 
+            fill(255); text("Hành Não (Trung khu ĐHTM)", AN.hn.x - 60, AN.hn.y - 30);
+
+            // 2. Tuyến trên thận
+            fill(255, 165, 0); rect(AN.sn.x, AN.sn.y, 80, 50); 
+            fill(0); text("Tuyến Trên Thận", AN.sn.x, AN.sn.y + 70);
+
+            // 3. Tim
+            fill(200, 50, 50); ellipse(AN.heart.x, AN.heart.y, 100, 120);
+            fill(0); text("Tim", AN.heart.x - 10, AN.heart.y + 70);
+            
+            // 4. Mạch máu chính và Thụ thể (Đường giả định)
+            stroke(100); strokeWeight(3);
+            line(AN.vessel.x - 100, AN.vessel.y, AN.vessel.x + 100, AN.vessel.y); // Động mạch
+            
+            // Thụ thể áp lực
+            fill(0); ellipse(AN.vessel.x - 80, AN.vessel.y, 8, 8);
+            fill(0); text("Thụ thể áp lực", AN.vessel.x - 100, AN.vessel.y - 15);
+            
+            // Dây Thần kinh Giao cảm (Từ Hành não xuống)
+            stroke(100, 100, 255); strokeWeight(2);
+            line(AN.hn.x - 30, AN.hn.y + 20, AN.heart.x + 50, AN.heart.y - 50); // Đến Tim
+            line(AN.hn.x - 30, AN.hn.y + 20, AN.sn.x + 40, AN.sn.y); // Đến Tuyến thận
+        }
+
+        function drawBloodPressureGauge(hp) {
+            // Đồng hồ đo HP (Góc trên bên trái)
+            const x = 100, y = 100;
+            stroke(0); strokeWeight(3);
+            fill(255); ellipse(x, y, 100, 100);
+            
+            // Màu cảnh báo
+            if (hp < 110) { fill(255, 100, 100, 150); ellipse(x, y, 100, 100); }
+            
+            fill(0); textSize(24); textAlign(CENTER);
+            text("HP", x, y - 30);
+            textSize(32);
+            text(hp.toFixed(0), x, y + 10);
+            textSize(16);
+            text("mmHg", x, y + 30);
+        }
+
+        function drawReceptorFlash(c) {
+            // Thụ thể nhấp nháy khi bị kích thích (Tâm)
+            if (frameCount % 10 < 5) {
+                fill(c); 
+                ellipse(320, 250, 15, 15); // Vị trí giả định của thụ thể
+            }
+        }
+
+        function drawNeuralSignal(type, phase) {
+            // Vẽ xung thần kinh (Các chấm di chuyển)
+            const signalColor = (type === 1) ? color(0, 255, 0) : color(0, 0, 200); // Xanh lá: Hướng Tâm, Xanh dương: Ly Tâm
+
+            // Tín hiệu Hướng Tâm (Thụ thể -> Hành não)
+            if (phase === 1) {
+                let p = (frameCount * neuronSignalSpeed) % 400; // Tốc độ di chuyển
+                fill(signalColor); 
+                ellipse(320 + p, 250 - p / 5, 5, 5); // Đường đi giả định
+            }
+
+            // Tín hiệu Ly Tâm Giao cảm (Hành não -> Tim/Tuyến thận)
+            if (phase === 2) {
+                let speed = 7;
+                // Đến Tim
+                let p_h = (frameCount * speed) % 500;
+                fill(signalColor); 
+                ellipse(620 - p_h * 0.5, 120 + p_h * 0.5, 5, 5);
+                
+                // Đến Tuyến Thận
+                let p_s = (frameCount * speed) % 500;
+                fill(signalColor); 
+                ellipse(620 - p_s * 0.05, 120 + p_s * 0.76, 5, 5);
+            }
+        }
+
+        function animateHeart(rate) {
+            // Hiệu ứng Tim đập nhanh/mạnh
+            let pulse = sin(frameCount * rate / 60 * TWO_PI / 10); // Biến đổi hình dáng
+            let size = map(rate, 80, 100, 100, 130);
+            fill(255, 50, 50); 
+            ellipse(400, 350, size + pulse * 10, size + 20 + pulse * 10);
+        }
+
+        function animateVesselConstriction(level) {
+            // Mạch máu co lại (Thể hiện bằng đường kính hẹp lại)
+            let vesselSize = map(level, 0, 2, 8, 4); // Cấp 0: rộng 8, Cấp 2: hẹp 4
+            
+            stroke(255, 100, 100); strokeWeight(vesselSize);
+            line(300, 250, 500, 250);
+            
+            fill(0); text(`Đường kính Mạch máu: ${vesselSize.toFixed(1)} (Co lại)`, 400, 220);
+        }
+
+        function drawHormoneRelease() {
+            // Vẽ các phân tử Hormone di chuyển từ tuyến thận
+            const SN = { x: 640, y: 525 };
+            const H_X = 400, H_Y = 350;
+
+            for (let i = 0; i < 5; i++) {
+                let delay = i * 20;
+                let t = (frameCount - delay) % 300;
+                if (t < 0) continue;
+
+                // Tính toán đường đi (giả định tuyến đường đến tim)
+                let x = lerp(SN.x, H_X, t / 300);
+                let y = lerp(SN.y, H_Y, t / 300);
+
+                fill(255, 0, 255); // Màu Hormone (Tím)
+                ellipse(x, y, 6, 6);
+                fill(0); text("Hormone", 550, 400); 
+            }
+        }
+
+        // --- HÀM ĐIỀU KHIỂN NÚT ---
+
+        function startSimulation() {
+            if (simulationState === 0 || simulationState === 3) {
+                simulationState = 1;
+                timeElapsed = 0;
+            }
+        }
+
+        function resetSimulation() {
+            simulationState = 0;
+            bloodPressure = maxHP;
+            heartRate = 80;
+            timeElapsed = 0;
+            document.getElementById('statusText').innerText = "Trạng thái: Đang chờ khởi động (HP Bình thường)";
+        }
+    </script>
+</body>
+</html>
